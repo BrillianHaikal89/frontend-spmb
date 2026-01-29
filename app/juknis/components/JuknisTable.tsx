@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/app/store/useAuthStore";
 import JuknisDetailModal from "./JuknisDetailModal";
+import JuknisEditModal from "./JuknisEditModal";
 
 export default function JuknisTable({ reload }: { reload: boolean }) {
   const token = useAuthStore((s) => s.token);
 
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any>(null);
+  const [detailData, setDetailData] = useState<any>(null);
+  const [editData, setEditData] = useState<any>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -30,7 +32,7 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
 
   if (loading) {
     return (
-      <div className="rounded-xl bg-white p-6 text-center text-gray-700 shadow">
+      <div className="rounded-xl bg-white p-6 text-center shadow">
         Loading...
       </div>
     );
@@ -44,7 +46,7 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
             <tr>
               <th className="p-3 text-left">Wilayah</th>
               <th className="p-3 text-center">Jenjang</th>
-              <th className="p-3 text-center">Domisili</th>
+              <th className="p-3 text-center">Dom</th>
               <th className="p-3 text-center">Afirmasi</th>
               <th className="p-3 text-center">Prestasi</th>
               <th className="p-3 text-center">Mutasi</th>
@@ -63,12 +65,18 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
                 <td className="p-3 text-center">{item.persen_afirmasi}%</td>
                 <td className="p-3 text-center">{item.persen_prestasi}%</td>
                 <td className="p-3 text-center">{item.persen_mutasi}%</td>
-                <td className="p-3 text-center">
+                <td className="p-3 text-center space-x-3">
                   <button
-                    onClick={() => setSelected(item)}
-                    className="text-blue-600 font-medium hover:underline"
+                    onClick={() => setDetailData(item)}
+                    className="text-blue-600 hover:underline"
                   >
                     Detail
+                  </button>
+                  <button
+                    onClick={() => setEditData(item)}
+                    className="text-green-600 hover:underline"
+                  >
+                    Edit
                   </button>
                 </td>
               </tr>
@@ -77,11 +85,21 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
         </table>
       </div>
 
-      {/* MODAL DETAIL */}
-      {selected && (
+      {detailData && (
         <JuknisDetailModal
-          data={selected}
-          onClose={() => setSelected(null)}
+          data={detailData}
+          onClose={() => setDetailData(null)}
+        />
+      )}
+
+      {editData && (
+        <JuknisEditModal
+          data={editData}
+          onClose={() => setEditData(null)}
+          onSuccess={() => {
+            setEditData(null);
+            fetchData();
+          }}
         />
       )}
     </>
