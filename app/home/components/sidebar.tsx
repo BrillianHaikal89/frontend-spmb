@@ -23,7 +23,9 @@ export default function Sidebar() {
 
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuthStore();
+
+  // ✅ PERUBAHAN DI SINI
+  const clearAuth = useAuthStore((s) => s.clearAuth);
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,8 +47,9 @@ export default function Sidebar() {
     return currentItem?.id || "dashboard";
   };
 
+  // ✅ PERUBAHAN DI SINI
   const handleConfirmLogout = () => {
-    logout();
+    clearAuth();
     router.replace("/");
   };
 

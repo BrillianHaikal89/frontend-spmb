@@ -1,9 +1,19 @@
+// app/store/useAuthStore.ts
 import { create } from "zustand";
 
-export const useAuthStore = create((set) => ({
+type AuthState = {
+  token: string | null;
+  user: any | null;
+  isAuthReady: boolean;
+
+  setAuth: (token: string, user: any, remember: boolean) => void;
+  loadFromStorage: () => void;
+  clearAuth: () => void;
+};
+
+export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
-  rememberMe: false,
   isAuthReady: false,
 
   setAuth: (token, user, remember) => {
@@ -18,32 +28,34 @@ export const useAuthStore = create((set) => ({
     set({
       token,
       user,
-      rememberMe: remember,
       isAuthReady: true,
     });
   },
 
   loadFromStorage: () => {
+    if (typeof window === "undefined") return;
+
     const token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token");
 
     const user =
-      localStorage.getItem("user") || sessionStorage.getItem("user");
+      localStorage.getItem("user") ||
+      sessionStorage.getItem("user");
 
-    if (token && user) {
-      set({
-        token,
-        user: JSON.parse(user),
-        isAuthReady: true,
-      });
-    } else {
-      set({ isAuthReady: true });
-    }
+    set({
+      token,
+      user: user ? JSON.parse(user) : null,
+      isAuthReady: true,
+    });
   },
 
-  logout: () => {
-    localStorage.clear();
-    sessionStorage.clear();
+  clearAuth: () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
     set({
       token: null,
       user: null,
