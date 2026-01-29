@@ -10,16 +10,24 @@ function toInputDate(date?: string) {
   return new Date(date).toISOString().split("T")[0];
 }
 
+const clamp = (n: number) => Math.max(0, Math.min(100, n));
+
+/* ================= COMPONENT ================= */
 export default function JuknisEditModal({
   data,
   onClose,
   onSuccess,
-}: any) {
+}: {
+  data: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const token = useAuthStore((s) => s.token);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    jenjang: data.jenjang, // SD | SMP | SMA
+    wilayah: data.wilayah,
+    jenjang: data.jenjang,
     pejabat_penandatangan: data.pejabat_penandatangan,
     tgl_penetapan_juknis: toInputDate(data.tgl_penetapan_juknis),
     tgl_mulai_pendaftaran: toInputDate(data.tgl_mulai_pendaftaran),
@@ -32,25 +40,51 @@ export default function JuknisEditModal({
     data_dukung_lainnya: data.data_dukung_lainnya || "",
   });
 
-  const totalPersen =
+  const total =
     Number(form.persen_domisili) +
     Number(form.persen_afirmasi) +
     Number(form.persen_prestasi) +
     Number(form.persen_mutasi);
 
-  const handleChange = (e: any) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  /* ================= HANDLE CHANGE ================= */
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
 
+    if (name.startsWith("persen_")) {
+      const nextValue = clamp(Number(value));
+      const next = { ...form, [name]: nextValue };
+
+      const nextTotal =
+        Number(next.persen_domisili) +
+        Number(next.persen_afirmasi) +
+        Number(next.persen_prestasi) +
+        Number(next.persen_mutasi);
+
+      if (nextTotal > 100) return;
+
+      setForm(next);
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
+  };
+
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    if (totalPersen !== 100) {
+    if (total !== 100) {
       alert("Total persentase harus tepat 100%");
       return;
     }
 
     setLoading(true);
     const formData = new FormData();
+
     Object.entries(form).forEach(([k, v]) =>
       formData.append(k, String(v))
     );
@@ -72,8 +106,9 @@ export default function JuknisEditModal({
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
 
-      alert("Juknis berhasil diperbarui");
+      alert("Data juknis berhasil diperbarui");
       onSuccess();
+      onClose();
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -82,45 +117,43 @@ export default function JuknisEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/30">
-      <div className="my-8 w-full max-w-4xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-xl">
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3 sm:p-4">
+      <div
+        className="
+          w-full max-w-5xl rounded-xl bg-white shadow-xl flex flex-col
+          max-h-[90vh] overflow-hidden
+          lg:max-h-none lg:overflow-visible
+        "
+      >
         {/* HEADER */}
-        <div className="flex items-center justify-between rounded-t-xl bg-blue-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between bg-blue-100 px-4 py-3 sm:px-6 rounded-t-xl">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">
             Edit Juknis
           </h2>
-          <button onClick={onClose}>
-            <X className="text-gray-700 hover:text-gray-900" />
+          <button onClick={onClose} className="p-1 rounded hover:bg-blue-200">
+            <X className="h-5 w-5 text-gray-700" />
           </button>
         </div>
 
-        {/* BODY */}
+        {/* FORM */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto bg-blue-50 p-6 grid grid-cols-1 gap-4 md:grid-cols-2"
+          className="
+            bg-blue-50 p-4 sm:p-6
+            grid grid-cols-1 gap-4
+            sm:grid-cols-2
+            lg:grid-cols-3
+            flex-1 overflow-y-auto
+            lg:flex-none lg:overflow-visible
+          "
         >
-          <Input label="Wilayah" value={data.wilayah} disabled />
+          <Input label="Wilayah" value={form.wilayah} disabled />
+          <Select label="Jenjang" name="jenjang" value={form.jenjang} onChange={handleChange} options={["SD", "SMP", "SMA"]} />
+          <Input label="Pejabat Penandatangan" name="pejabat_penandatangan" value={form.pejabat_penandatangan} onChange={handleChange} />
 
-          {/* ===== SELECT JENJANG ===== */}
-          <Select
-            label="Jenjang"
-            name="jenjang"
-            value={form.jenjang}
-            onChange={handleChange}
-            options={["SD", "SMP", "SMA"]}
-          />
-
-          <Input
-            label="Pejabat Penandatangan"
-            name="pejabat_penandatangan"
-            value={form.pejabat_penandatangan}
-            onChange={handleChange}
-          />
-
-          <Input type="date" label="Tgl Penetapan Juknis" name="tgl_penetapan_juknis" value={form.tgl_penetapan_juknis} onChange={handleChange} />
-          <Input type="date" label="Tgl Mulai Pendaftaran" name="tgl_mulai_pendaftaran" value={form.tgl_mulai_pendaftaran} onChange={handleChange} />
-          <Input type="date" label="Tgl Penetapan Kelulusan" name="tgl_penetapan_kelulusan" value={form.tgl_penetapan_kelulusan} onChange={handleChange} />
+          <Input type="date" label="Tgl Penetapan" name="tgl_penetapan_juknis" value={form.tgl_penetapan_juknis} onChange={handleChange} />
+          <Input type="date" label="Tgl Mulai" name="tgl_mulai_pendaftaran" value={form.tgl_mulai_pendaftaran} onChange={handleChange} />
+          <Input type="date" label="Tgl Kelulusan" name="tgl_penetapan_kelulusan" value={form.tgl_penetapan_kelulusan} onChange={handleChange} />
           <Input type="date" label="Tgl Daftar Ulang" name="tgl_daftar_ulang" value={form.tgl_daftar_ulang} onChange={handleChange} />
 
           <Input type="number" label="% Domisili" name="persen_domisili" value={form.persen_domisili} onChange={handleChange} />
@@ -129,23 +162,20 @@ export default function JuknisEditModal({
           <Input type="number" label="% Mutasi" name="persen_mutasi" value={form.persen_mutasi} onChange={handleChange} />
 
           {/* TOTAL */}
-          <div className="md:col-span-2">
+          <div className="lg:col-span-3">
             <p
               className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
-                totalPersen === 100
+                total === 100
                   ? "border-green-300 bg-green-50 text-green-700"
-                  : totalPersen > 100
-                  ? "border-red-300 bg-red-50 text-red-700"
                   : "border-orange-300 bg-orange-50 text-orange-700"
               }`}
             >
-              Total Persentase: {totalPersen}%
+              Total Persentase: {total}%
             </p>
           </div>
 
-          <Input type="file" label="Ganti File Juknis (Opsional)" name="juknis_file" />
-
-          <div className="md:col-span-2">
+          {/* DATA DUKUNG */}
+          <div className="lg:col-span-3">
             <label className="mb-1 block text-sm font-medium text-gray-900">
               Data Dukung Lainnya
             </label>
@@ -153,25 +183,19 @@ export default function JuknisEditModal({
               name="data_dukung_lainnya"
               value={form.data_dukung_lainnya}
               onChange={handleChange}
-              rows={3}
-              className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              rows={2}
+              className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-300"
             />
           </div>
 
-          {/* FOOTER */}
-          <div className="md:col-span-2 sticky bottom-0 bg-blue-50 pt-4 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-800 hover:bg-blue-100"
-            >
+          <Input type="file" name="juknis_file" label="Ganti File Juknis" />
+
+          {/* ACTION */}
+          <div className="lg:col-span-3 flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-900 hover:bg-blue-100">
               Batal
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading || total !== 100} className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
               {loading ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
           </div>
@@ -181,7 +205,7 @@ export default function JuknisEditModal({
   );
 }
 
-/* ================= INPUT ================= */
+/* ================= INPUT & SELECT ================= */
 function Input({ label, ...props }: any) {
   return (
     <div>
@@ -190,33 +214,27 @@ function Input({ label, ...props }: any) {
       </label>
       <input
         {...props}
-        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
-        focus:outline-none focus:ring-2 focus:ring-blue-300
-        disabled:bg-blue-100 disabled:cursor-not-allowed"
+        min={0}
+        max={100}
+        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-300 disabled:bg-blue-100"
       />
     </div>
   );
 }
 
-/* ================= SELECT ================= */
-function Select({ label, name, value, onChange, options }: any) {
+function Select({ label, options, ...props }: any) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-900">
         {label}
       </label>
       <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
-        focus:outline-none focus:ring-2 focus:ring-blue-300"
+        {...props}
+        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-300"
       >
-        <option value="">Pilih Jenjang</option>
+        <option value="">Pilih</option>
         {options.map((o: string) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
+          <option key={o}>{o}</option>
         ))}
       </select>
     </div>
