@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  CheckCircle, // ✅ icon validasi
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -24,30 +25,46 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ✅ PERUBAHAN DI SINI
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const { clearAuth, user } = useAuthStore();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  const isAdmin = user?.role === "admin";
+
+  /* ================= MENU ================= */
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home, path: "/home" },
     { id: "penetapan-wilayah", label: "Penetapan Wilayah", icon: MapPin, path: "/wilayah" },
     { id: "daya-tampung", label: "Daya Tampung (Swasta)", icon: Users, path: "/daya-tampung" },
+
+    // ===== PENETAPAN JUKNIS =====
     { id: "penetapan-juknis", label: "Penetapan Juknis", icon: FileText, path: "/juknis" },
+
+    // ✅ KHUSUS ADMIN
+    ...(isAdmin
+      ? [
+          {
+            id: "validasi-juknis",
+            label: "Validasi Juknis",
+            icon: CheckCircle,
+            path: "/validasi",
+          },
+        ]
+      : []),
+
     { id: "sk", label: "SK", icon: BookOpen, path: "/sk" },
     { id: "logout", label: "Logout", icon: LogOut, path: "#" },
   ];
 
   const getActiveMenu = () => {
-    const currentItem = menuItems.find(item =>
+    const currentItem = menuItems.find((item) =>
       pathname?.startsWith(item.path)
     );
     return currentItem?.id || "dashboard";
   };
 
-  // ✅ PERUBAHAN DI SINI
   const handleConfirmLogout = () => {
     clearAuth();
     router.replace("/");
@@ -69,7 +86,7 @@ export default function Sidebar() {
           transition-all duration-300
         `}
       >
-        {/* Logo */}
+        {/* LOGO */}
         <div className="p-4 border-b border-blue-100">
           <div className="flex items-center justify-between">
             {!isCollapsed ? (
@@ -129,11 +146,13 @@ export default function Sidebar() {
                     }}
                     className={`
                       flex items-center rounded-lg px-3 py-2.5 text-sm font-medium
-                      ${item.id === "logout"
-                        ? "text-red-600 hover:bg-red-50"
-                        : isActive
-                          ? "bg-blue-50 text-blue-600"
-                          : "text-gray-700 hover:bg-blue-50"}
+                      ${
+                        item.id === "logout"
+                          ? "text-red-600 hover:bg-red-50"
+                          : isActive
+                          ? "bg-blue-100 text-blue-700"
+                          : "text-gray-700 hover:bg-blue-50"
+                      }
                       ${isCollapsed ? "justify-center" : ""}
                       transition-colors
                     `}

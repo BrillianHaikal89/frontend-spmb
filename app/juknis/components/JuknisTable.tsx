@@ -7,6 +7,9 @@ import JuknisEditModal from "./JuknisEditModal";
 
 export default function JuknisTable({ reload }: { reload: boolean }) {
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+
+  const isAdmin = user?.role === "admin";
 
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,12 +75,16 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
                   >
                     Detail
                   </button>
-                  <button
-                    onClick={() => setEditData(item)}
-                    className="text-green-600 hover:underline"
-                  >
-                    Edit
-                  </button>
+
+                  {/* ❌ ADMIN TIDAK BOLEH EDIT */}
+                  {!isAdmin && (
+                    <button
+                      onClick={() => setEditData(item)}
+                      className="text-green-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -92,7 +99,8 @@ export default function JuknisTable({ reload }: { reload: boolean }) {
         />
       )}
 
-      {editData && (
+      {/* DOUBLE PROTECTION */}
+      {!isAdmin && editData && (
         <JuknisEditModal
           data={editData}
           onClose={() => setEditData(null)}

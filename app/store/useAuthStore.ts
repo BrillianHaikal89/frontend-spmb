@@ -1,14 +1,19 @@
 // app/store/useAuthStore.ts
 import { create } from "zustand";
 
+type User = {
+  username: string;
+  role: "admin" | "operator" | "kabupaten" | "kota";
+};
+
 type AuthState = {
   token: string | null;
-  user: any | null;
+  user: User | null;
   isAuthReady: boolean;
 
-  setAuth: (token: string, user: any, remember: boolean) => void;
-  loadFromStorage: () => void;
+  setAuth: (token: string, user: User) => void;
   clearAuth: () => void;
+  loadFromStorage: () => void;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -16,14 +21,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthReady: false,
 
-  setAuth: (token, user, remember) => {
-    if (remember) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      sessionStorage.setItem("token", token);
-      sessionStorage.setItem("user", JSON.stringify(user));
-    }
+  setAuth: (token, user) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
 
     set({
       token,
@@ -35,17 +35,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   loadFromStorage: () => {
     if (typeof window === "undefined") return;
 
-    const token =
-      localStorage.getItem("token") ||
-      sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
 
-    const user =
-      localStorage.getItem("user") ||
-      sessionStorage.getItem("user");
+    let user: User | null = null;
+    try {
+      user = userStr ? JSON.parse(userStr) : null;
+    } catch {
+      user = null;
+    }
 
     set({
       token,
-      user: user ? JSON.parse(user) : null,
+      user,
       isAuthReady: true,
     });
   },
@@ -53,8 +55,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearAuth: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
 
     set({
       token: null,

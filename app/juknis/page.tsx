@@ -10,7 +10,7 @@ export default function JuknisPage() {
   const [open, setOpen] = useState(false);
   const [reload, setReload] = useState(false);
 
-  const { loadFromStorage, isAuthReady } = useAuthStore();
+  const { loadFromStorage, isAuthReady, user } = useAuthStore();
 
   useEffect(() => {
     loadFromStorage();
@@ -19,30 +19,35 @@ export default function JuknisPage() {
   if (!isAuthReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-blue-50">
-        <span>Loading...</span>
+        Loading...
       </div>
     );
   }
 
+  const isAdmin = user?.role === "admin";
+
   return (
     <div className="min-h-screen bg-blue-50 p-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="mb-6 flex items-center gap-4">
         <h1 className="text-xl font-bold text-gray-900">
           Data Juknis SPMB
         </h1>
 
-        <button
-          onClick={() => setOpen(true)}
-          className="ml-auto flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
-        >
-          <Plus size={18} />
-          Tambah Juknis
-        </button>
+        {/* ❌ ADMIN TIDAK BOLEH TAMBAH */}
+        {!isAdmin && (
+          <button
+            onClick={() => setOpen(true)}
+            className="ml-auto flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+          >
+            <Plus size={18} />
+            Tambah Juknis
+          </button>
+        )}
       </div>
 
       <JuknisTable reload={reload} />
 
-      {open && (
+      {open && !isAdmin && (
         <JuknisModal
           onClose={() => setOpen(false)}
           onSuccess={() => setReload(!reload)}
