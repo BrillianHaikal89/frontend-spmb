@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, Download } from 'lucide-react'
 
 /* ================= HELPER ================= */
 function formatTanggal (dateString?: string) {
@@ -17,6 +17,7 @@ function formatTanggal (dateString?: string) {
 
 /* ================= TYPE ================= */
 export type JuknisDetail = {
+  id?: string
   wilayah?: string
   jenjang?: string
   pejabat_penandatangan?: string
@@ -30,6 +31,7 @@ export type JuknisDetail = {
   status_validasi?: string
   keterangan?: string | null
   data_dukung_lainnya?: string
+  nama_file?: string
 }
 
 /* ================= MODAL ================= */
@@ -40,9 +42,53 @@ export default function JuknisDetailModalReadOnly ({
   data: JuknisDetail
   onClose: () => void
 }) {
+
+  /* ================= DOWNLOAD (FINAL FIX) ================= */
+  const handleDownloadFile = async (id: string, filename?: string) => {
+    try {
+      const token = localStorage.getItem('token')
+
+      if (!token) {
+        alert('Token tidak ditemukan, silakan login ulang')
+        return
+      }
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/download/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('DOWNLOAD ERROR:', res.status, text)
+        throw new Error('Gagal download file')
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename || 'juknis.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
+    } catch (err) {
+      console.error(err)
+      alert('Download gagal')
+    }
+  }
+
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
       <div className='w-full max-w-5xl rounded-xl bg-white shadow-xl flex flex-col max-h-[90vh] overflow-hidden'>
+
         {/* HEADER */}
         <div className='flex items-center justify-between bg-blue-100 px-6 py-4'>
           <h2 className='text-lg font-semibold text-gray-900'>
@@ -68,33 +114,26 @@ export default function JuknisDetailModalReadOnly ({
           <Detail label='% Prestasi' value={data.persen_prestasi != null ? `${data.persen_prestasi}%` : '-'} />
           <Detail label='% Mutasi' value={data.persen_mutasi != null ? `${data.persen_mutasi}%` : '-'} />
 
-          {data.data_dukung_lainnya && (
-            <div className='lg:col-span-3'>
-              <Detail label='Data Dukung Lainnya' value={data.data_dukung_lainnya} />
-            </div>
-          )}
+          <Detail label='Status Validasi' value={data.status_validasi || 'diajukan'} />
 
-          {/* STATUS VALIDASI */}
-          <Detail
-            label='Status Validasi'
-            value={data.status_validasi || 'diajukan'}
-          />
-
-          {/* KETERANGAN */}
           <div className='lg:col-span-3'>
             <Detail
-              label='Keterangan Validasi'
-              value={
-                data.keterangan && data.keterangan.trim() !== ''
-                  ? data.keterangan
-                  : 'Tidak ada keterangan'
-              }
+              label='Keterangan'
+              value={data.keterangan || 'Tidak ada keterangan'}
             />
           </div>
         </div>
 
         {/* FOOTER */}
-        <div className='flex justify-end bg-blue-100 px-6 py-3'>
+        <div className='flex justify-between bg-blue-100 px-6 py-3'>
+          <button
+            onClick={() => data.id && handleDownloadFile(data.id, data.nama_file)}
+            className='flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700'
+          >
+            <Download size={18} />
+            Download File
+          </button>
+
           <button
             onClick={onClose}
             className='rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-900 hover:bg-blue-50'
@@ -102,12 +141,13 @@ export default function JuknisDetailModalReadOnly ({
             Tutup
           </button>
         </div>
+
       </div>
     </div>
   )
 }
 
-/* ================= DETAIL CARD ================= */
+/* ================= DETAIL ================= */
 function Detail ({ label, value }: { label: string; value: any }) {
   return (
     <div className='rounded-lg border border-blue-200 bg-white p-4'>
