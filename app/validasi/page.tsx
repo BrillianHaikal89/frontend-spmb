@@ -3,39 +3,52 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/useAuthStore";
+import JuknisDetailModalReadOnly from "../juknis/components/JuknisDetailModalReadOnly";
 
 /* ================= TYPE ================= */
+type StatusValidasi = "diajukan" | "disetujui" | "ditolak";
+
 type Juknis = {
   id: string;
   wilayah: string;
-  wilayah_kode: string;
   jenjang: string;
-  pejabat_penandatangan: string;
+  pejabat_penandatangan?: string;
+  tgl_penetapan_juknis?: string;
+  tgl_mulai_pendaftaran?: string;
+  tgl_penetapan_kelulusan?: string;
   persen_domisili: number;
   persen_afirmasi: number;
   persen_prestasi: number;
   persen_mutasi: number;
-  juknis_file: string;
-  data_dukung_lainnya: string | null;
-  dibuat_oleh: string;
-  role_pembuat: string;
-  status: string;
+  status_validasi: StatusValidasi;
+  keterangan?: string;
+  juknis_file?: string;
+  data_dukung_lainnya?: string;
 };
 
 /* ================= COMPONENT ================= */
-export default function ValidasiJuknisPage() {
+export default function AdminValidasiJuknisPage() {
   const router = useRouter();
   const { token, user, isAuthReady } = useAuthStore();
 
   const [data, setData] = useState<Juknis[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Juknis | null>(null);
-  const [alasanTolak, setAlasanTolak] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const [detailData, setDetailData] = useState<Juknis | null>(null);
+
+  const [showModal, setShowModal] = useState(false);
+  const [selectedJuknis, setSelectedJuknis] = useState<{
+    id: string;
+    status: StatusValidasi;
+  } | null>(null);
+
+  const [keterangan, setKeterangan] = useState("");
+  const [error, setError] = useState("");
 
   /* ================= GUARD ADMIN ================= */
   useEffect(() => {
     if (!isAuthReady) return;
-
     if (!token || user?.role !== "admin") {
       router.replace("/home");
     }
@@ -47,19 +60,14 @@ export default function ValidasiJuknisPage() {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/all`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setData(json.data);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      alert("Gagal memuat data");
     } finally {
       setLoading(false);
     }
@@ -69,120 +77,162 @@ export default function ValidasiJuknisPage() {
     if (token) fetchData();
   }, [token]);
 
-  /* ================= ACTION ================= */
-  const handleApprove = async (id: string) => {
-    if (!confirm("Setujui juknis ini?")) return;
+  /* ================= DOWNLOAD FILE ================= */
+  const handleDownloadFile = async (id: string, filename?: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/download/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    // 🔥 SESUAIKAN API BACKEND
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/${id}/approve`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+      if (!res.ok) throw new Error("Gagal download file");
 
-    fetchData();
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "juknis.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Download gagal");
+    }
   };
 
-  const handleReject = async () => {
-    if (!selected) return;
-
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/${selected.id}/reject`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          alasan: alasanTolak,
-        }),
-      }
-    );
-
-    setSelected(null);
-    setAlasanTolak("");
-    fetchData();
+  /* ================= OPEN VALIDASI ================= */
+  const handleChangeStatus = (id: string, status: StatusValidasi) => {
+    setSelectedJuknis({ id, status });
+    setKeterangan("");
+    setError("");
+    setShowModal(true);
   };
 
+  /* ================= SUBMIT VALIDASI ================= */
+  const submitStatus = async () => {
+    if (!selectedJuknis) return;
+
+    if (!keterangan.trim()) {
+      setError("Keterangan wajib diisi");
+      return;
+    }
+
+    setUpdatingId(selectedJuknis.id);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/${selectedJuknis.id}/status-validasi`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status_validasi: selectedJuknis.status,
+            keterangan,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const json = await res.json();
+        alert(json.message || "Gagal memperbarui status");
+        return;
+      }
+
+      setShowModal(false);
+      fetchData();
+    } catch {
+      alert("Terjadi kesalahan saat menyimpan");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  /* ================= LOADING ================= */
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-blue-50">
-        <span className="text-gray-700">Memuat data...</span>
+        <span className="text-gray-900">Memuat data...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 p-4">
-      <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h1 className="mb-4 text-xl font-bold text-gray-900">
-          Validasi Penetapan Juknis
+    <div className="min-h-screen bg-blue-50 p-6">
+      <div className="rounded-xl bg-white p-6 shadow-md">
+        <h1 className="mb-6 text-xl font-bold text-gray-900">
+          Validasi Juknis (Admin)
         </h1>
 
-        {/* TABLE */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <div className="overflow-x-auto rounded-lg border border-blue-200">
+          <table className="w-full text-sm text-gray-900">
             <thead className="bg-blue-100">
               <tr>
                 <Th>Wilayah</Th>
                 <Th>Jenjang</Th>
-                <Th>Pembuat</Th>
-                <Th>Dom</Th>
-                <Th>Afirm</Th>
-                <Th>Pres</Th>
-                <Th>Mut</Th>
-                <Th>Status</Th>
-                <Th>File</Th>
-                <Th>Aksi</Th>
+                <Th align="center">Dom</Th>
+                <Th align="center">Afirmasi</Th>
+                <Th align="center">Prestasi</Th>
+                <Th align="center">Mutasi</Th>
+                <Th>Status & Aksi</Th>
               </tr>
             </thead>
+
             <tbody>
               {data.map((j) => (
-                <tr key={j.id} className="border-b hover:bg-blue-50">
+                <tr
+                  key={j.id}
+                  className="border-t border-blue-100 hover:bg-blue-50"
+                >
                   <Td>{j.wilayah}</Td>
                   <Td>{j.jenjang}</Td>
+                  <Td align="center">{j.persen_domisili}%</Td>
+                  <Td align="center">{j.persen_afirmasi}%</Td>
+                  <Td align="center">{j.persen_prestasi}%</Td>
+                  <Td align="center">{j.persen_mutasi}%</Td>
+
+                  {/* STATUS + DOWNLOAD + DETAIL */}
                   <Td>
-                    {j.dibuat_oleh}
-                    <div className="text-xs text-gray-500">
-                      ({j.role_pembuat})
+                    <div className="flex items-center gap-2">
+                      {j.juknis_file && (
+                        <button
+                          onClick={() =>
+                            handleDownloadFile(j.id, j.juknis_file)
+                          }
+                          className="rounded-md bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200"
+                        >
+                          Download
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setDetailData(j)}
+                        className="rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-medium text-gray-900 hover:bg-blue-50"
+                      >
+                        Detail
+                      </button>
+                      <select
+                        value={j.status_validasi}
+                        disabled={updatingId === j.id}
+                        onChange={(e) =>
+                          handleChangeStatus(
+                            j.id,
+                            e.target.value as StatusValidasi
+                          )
+                        }
+                        className="rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-semibold text-gray-900"
+                      >
+                        <option value="diajukan">Diajukan</option>
+                        <option value="disetujui">Disetujui</option>
+                        <option value="ditolak">Ditolak</option>
+                      </select>
                     </div>
-                  </Td>
-                  <Td>{j.persen_domisili}%</Td>
-                  <Td>{j.persen_afirmasi}%</Td>
-                  <Td>{j.persen_prestasi}%</Td>
-                  <Td>{j.persen_mutasi}%</Td>
-                  <Td>
-                    <span className="rounded bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                      {j.status}
-                    </span>
-                  </Td>
-                  <Td>
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_API_URL}/uploads/${j.juknis_file}`}
-                      target="_blank"
-                      className="text-blue-600 hover:underline"
-                    >
-                      Download
-                    </a>
-                  </Td>
-                  <Td className="space-x-2">
-                    <button
-                      onClick={() => setSelected(j)}
-                      className="rounded bg-gray-200 px-3 py-1 text-xs hover:bg-gray-300"
-                    >
-                      Tolak
-                    </button>
-                    <button
-                      onClick={() => handleApprove(j.id)}
-                      className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-                    >
-                      Setujui
-                    </button>
                   </Td>
                 </tr>
               ))}
@@ -191,36 +241,46 @@ export default function ValidasiJuknisPage() {
         </div>
       </div>
 
-      {/* MODAL TOLAK */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
+      {/* ================= MODAL DETAIL ================= */}
+      {detailData && (
+        <JuknisDetailModalReadOnly
+          data={detailData}
+          onClose={() => setDetailData(null)}
+        />
+      )}
+
+      {/* ================= MODAL VALIDASI ================= */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/30">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
             <h2 className="mb-2 text-lg font-semibold text-gray-900">
-              Tolak Juknis
+              Keterangan Validasi
             </h2>
-            <p className="mb-2 text-sm text-gray-700">
-              Alasan penolakan:
-            </p>
+
+            {error && (
+              <p className="mb-2 text-sm text-red-600">{error}</p>
+            )}
+
             <textarea
-              value={alasanTolak}
-              onChange={(e) => setAlasanTolak(e.target.value)}
-              rows={3}
-              className="w-full rounded border px-3 py-2 text-gray-900"
+              className="w-full rounded-md border border-blue-300 bg-white p-2 text-sm text-gray-900"
+              rows={4}
+              value={keterangan}
+              onChange={(e) => setKeterangan(e.target.value)}
+              placeholder="Isi keterangan validasi..."
             />
 
-            <div className="mt-4 flex justify-end gap-3">
+            <div className="mt-4 flex justify-end gap-2">
               <button
-                onClick={() => setSelected(null)}
-                className="rounded border px-4 py-2 text-sm"
+                onClick={() => setShowModal(false)}
+                className="rounded-md bg-gray-200 px-4 py-2 text-sm text-gray-900 hover:bg-gray-300"
               >
                 Batal
               </button>
               <button
-                onClick={handleReject}
-                disabled={!alasanTolak}
-                className="rounded bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+                onClick={submitStatus}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
               >
-                Tolak
+                Simpan
               </button>
             </div>
           </div>
@@ -231,17 +291,25 @@ export default function ValidasiJuknisPage() {
 }
 
 /* ================= TABLE HELPER ================= */
-function Th({ children }: any) {
+function Th({ children, align = "left" }: any) {
   return (
-    <th className="border px-3 py-2 text-left font-semibold text-gray-900">
+    <th
+      className={`border-b border-blue-200 px-4 py-3 font-semibold text-gray-900 ${
+        align === "center" ? "text-center" : "text-left"
+      }`}
+    >
       {children}
     </th>
   );
 }
 
-function Td({ children }: any) {
+function Td({ children, align = "left" }: any) {
   return (
-    <td className="border px-3 py-2 text-gray-800">
+    <td
+      className={`px-4 py-3 text-gray-800 ${
+        align === "center" ? "text-center" : "text-left"
+      }`}
+    >
       {children}
     </td>
   );

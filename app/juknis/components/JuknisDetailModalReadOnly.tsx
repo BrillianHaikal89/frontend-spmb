@@ -16,7 +16,7 @@ function formatTanggal (dateString?: string) {
 }
 
 /* ================= TYPE ================= */
-export type JuknisDetail = {
+type JuknisDetail = {
   wilayah?: string
   jenjang?: string
   pejabat_penandatangan?: string
@@ -32,7 +32,6 @@ export type JuknisDetail = {
   data_dukung_lainnya?: string
 }
 
-/* ================= MODAL ================= */
 export default function JuknisDetailModalReadOnly ({
   data,
   onClose
@@ -70,17 +69,20 @@ export default function JuknisDetailModalReadOnly ({
 
           {data.data_dukung_lainnya && (
             <div className='lg:col-span-3'>
-              <Detail label='Data Dukung Lainnya' value={data.data_dukung_lainnya} />
+              <Detail
+                label='Data Dukung Lainnya'
+                value={data.data_dukung_lainnya}
+              />
             </div>
           )}
 
-          {/* STATUS VALIDASI */}
+          {/* STATUS */}
           <Detail
             label='Status Validasi'
             value={data.status_validasi || 'diajukan'}
           />
 
-          {/* KETERANGAN */}
+          {/* 🔥 KETERANGAN – SUDAH AMAN */}
           <div className='lg:col-span-3'>
             <Detail
               label='Keterangan Validasi'

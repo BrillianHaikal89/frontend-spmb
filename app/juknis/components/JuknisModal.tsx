@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/app/store/useAuthStore";
 
 /* ================= HELPER ================= */
@@ -16,6 +16,7 @@ function formatWilayah(username?: string) {
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
+const ALL_JENJANG = ["SD", "SMP", "SMA"];
 
 /* ================= COMPONENT ================= */
 export default function JuknisModal({
@@ -31,6 +32,9 @@ export default function JuknisModal({
   const wilayah = formatWilayah(user?.username);
 
   const [loading, setLoading] = useState(false);
+  const [usedJenjang, setUsedJenjang] = useState<string[]>([]);
+  const [availableJenjang, setAvailableJenjang] = useState<string[]>(ALL_JENJANG);
+
   const [form, setForm] = useState({
     jenjang: "",
     pejabat_penandatangan: "",
@@ -44,6 +48,44 @@ export default function JuknisModal({
     persen_mutasi: 0,
     data_dukung_lainnya: "",
   });
+
+  /* ================= AMBIL JENJANG YANG SUDAH ADA ================= */
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchUsedJenjang = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/used-jenjang`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const json = await res.json();
+        if (!json.success) return;
+
+        setUsedJenjang(json.data);
+
+        const filtered = ALL_JENJANG.filter(
+          (j) => !json.data.includes(j)
+        );
+
+        setAvailableJenjang(filtered);
+
+        // reset jenjang kalau sudah tidak valid
+        if (!filtered.includes(form.jenjang)) {
+          setForm((f) => ({ ...f, jenjang: "" }));
+        }
+      } catch {
+        // diamkan, tidak mengganggu UI
+      }
+    };
+
+    fetchUsedJenjang();
+  }, [token]);
 
   const total =
     Number(form.persen_domisili) +
@@ -69,7 +111,6 @@ export default function JuknisModal({
         Number(next.persen_prestasi) +
         Number(next.persen_mutasi);
 
-      // ❌ cegah total > 100
       if (nextTotal > 100) return;
 
       setForm(next);
@@ -154,16 +195,10 @@ export default function JuknisModal({
             name="jenjang"
             value={form.jenjang}
             onChange={handleChange}
-            options={["SD", "SMP", "SMA"]}
+            options={availableJenjang}
           />
 
-          <Input
-            label="Pejabat Penandatangan"
-            name="pejabat_penandatangan"
-            value={form.pejabat_penandatangan}
-            onChange={handleChange}
-          />
-
+          <Input label="Pejabat Penandatangan" name="pejabat_penandatangan" value={form.pejabat_penandatangan} onChange={handleChange} />
           <Input type="date" label="Tgl Penetapan Juknis" name="tgl_penetapan_juknis" value={form.tgl_penetapan_juknis} onChange={handleChange} />
           <Input type="date" label="Tgl Mulai Pendaftaran" name="tgl_mulai_pendaftaran" value={form.tgl_mulai_pendaftaran} onChange={handleChange} />
           <Input type="date" label="Tgl Penetapan Kelulusan" name="tgl_penetapan_kelulusan" value={form.tgl_penetapan_kelulusan} onChange={handleChange} />
@@ -187,14 +222,8 @@ export default function JuknisModal({
             </p>
           </div>
 
-          {/* FILE JUKNIS */}
-          <Input
-            type="file"
-            name="juknis_file"
-            label="File Juknis"
-          />
+          <Input type="file" name="juknis_file" label="File Juknis" />
 
-          {/* DATA DUKUNG (DIPINDAHKAN KE BAWAH FILE) */}
           <div className="lg:col-span-4">
             <label className="mb-1 block text-sm font-medium text-gray-900">
               Data Dukung Lainnya
@@ -209,20 +238,13 @@ export default function JuknisModal({
             />
           </div>
 
-          {/* ACTION */}
           <div className="lg:col-span-4 flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-800 hover:bg-blue-100"
-            >
+            <button type="button" onClick={onClose}
+              className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-800 hover:bg-blue-100">
               Batal
             </button>
-            <button
-              type="submit"
-              disabled={loading || total !== 100}
-              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading || total !== 100}
+              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
               {loading ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
@@ -264,7 +286,7 @@ function Select({ label, options, ...props }: any) {
       >
         <option value="">Pilih</option>
         {options.map((o: string) => (
-          <option key={o}>{o}</option>
+          <option key={o} value={o}>{o}</option>
         ))}
       </select>
     </div>

@@ -27,7 +27,7 @@ export default function JuknisEditModal({
 
   const [form, setForm] = useState({
     wilayah: data.wilayah,
-    jenjang: data.jenjang,
+    jenjang: data.jenjang, // tetap disimpan untuk ditampilkan
     pejabat_penandatangan: data.pejabat_penandatangan,
     tgl_penetapan_juknis: toInputDate(data.tgl_penetapan_juknis),
     tgl_mulai_pendaftaran: toInputDate(data.tgl_mulai_pendaftaran),
@@ -49,7 +49,7 @@ export default function JuknisEditModal({
   /* ================= HANDLE CHANGE ================= */
   const handleChange = (
     e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      HTMLInputElement | HTMLTextAreaElement
     >
   ) => {
     const { name, value } = e.target;
@@ -85,11 +85,13 @@ export default function JuknisEditModal({
     setLoading(true);
     const formData = new FormData();
 
-    Object.entries(form).forEach(([k, v]) =>
-      formData.append(k, String(v))
-    );
+    // ❌ jenjang sengaja TIDAK dikirim
+    Object.entries(form).forEach(([k, v]) => {
+      if (k === "jenjang") return;
+      formData.append(k, String(v));
+    });
 
-    if (e.target.juknis_file.files[0]) {
+    if (e.target.juknis_file?.files?.[0]) {
       formData.append("juknis_file", e.target.juknis_file.files[0]);
     }
 
@@ -98,7 +100,9 @@ export default function JuknisEditModal({
         `${process.env.NEXT_PUBLIC_API_URL}/api/juknis/${data.id}`,
         {
           method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         }
       );
@@ -110,7 +114,7 @@ export default function JuknisEditModal({
       onSuccess();
       onClose();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -118,17 +122,12 @@ export default function JuknisEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3 sm:p-4">
-      <div
-        className="
-          w-full max-w-5xl rounded-xl bg-white shadow-xl flex flex-col
-          max-h-[90vh] overflow-hidden
-          lg:max-h-none lg:overflow-visible
-        "
-      >
+      <div className="w-full max-w-5xl rounded-xl bg-white shadow-xl flex flex-col max-h-[90vh] overflow-hidden lg:max-h-none lg:overflow-visible">
+
         {/* HEADER */}
         <div className="flex items-center justify-between bg-blue-100 px-4 py-3 sm:px-6 rounded-t-xl">
           <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-            Edit Juknis
+            Upload Ulang Juknis
           </h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-blue-200">
             <X className="h-5 w-5 text-gray-700" />
@@ -138,18 +137,24 @@ export default function JuknisEditModal({
         {/* FORM */}
         <form
           onSubmit={handleSubmit}
-          className="
-            bg-blue-50 p-4 sm:p-6
-            grid grid-cols-1 gap-4
-            sm:grid-cols-2
-            lg:grid-cols-3
-            flex-1 overflow-y-auto
-            lg:flex-none lg:overflow-visible
-          "
+          className="bg-blue-50 p-4 sm:p-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 flex-1 overflow-y-auto lg:flex-none lg:overflow-visible"
         >
           <Input label="Wilayah" value={form.wilayah} disabled />
-          <Select label="Jenjang" name="jenjang" value={form.jenjang} onChange={handleChange} options={["SD", "SMP", "SMA"]} />
-          <Input label="Pejabat Penandatangan" name="pejabat_penandatangan" value={form.pejabat_penandatangan} onChange={handleChange} />
+
+          {/* JENJANG TERKUNCI (UI TETAP SELECT) */}
+          <Select
+            label="Jenjang"
+            value={form.jenjang}
+            options={[form.jenjang]}
+            disabled
+          />
+
+          <Input
+            label="Pejabat Penandatangan"
+            name="pejabat_penandatangan"
+            value={form.pejabat_penandatangan}
+            onChange={handleChange}
+          />
 
           <Input type="date" label="Tgl Penetapan" name="tgl_penetapan_juknis" value={form.tgl_penetapan_juknis} onChange={handleChange} />
           <Input type="date" label="Tgl Mulai" name="tgl_mulai_pendaftaran" value={form.tgl_mulai_pendaftaran} onChange={handleChange} />
@@ -192,11 +197,19 @@ export default function JuknisEditModal({
 
           {/* ACTION */}
           <div className="lg:col-span-3 flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-900 hover:bg-blue-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-900 hover:bg-blue-100"
+            >
               Batal
             </button>
-            <button type="submit" disabled={loading || total !== 100} className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
-              {loading ? "Menyimpan..." : "Simpan Perubahan"}
+            <button
+              type="submit"
+              disabled={loading || total !== 100}
+              className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </form>
@@ -230,11 +243,10 @@ function Select({ label, options, ...props }: any) {
       </label>
       <select
         {...props}
-        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-300"
+        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-300 disabled:bg-blue-100"
       >
-        <option value="">Pilih</option>
         {options.map((o: string) => (
-          <option key={o}>{o}</option>
+          <option key={o} value={o}>{o}</option>
         ))}
       </select>
     </div>
