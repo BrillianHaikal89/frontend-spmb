@@ -47,8 +47,9 @@ export default function LoginForm() {
 
       const { token, user } = result.data;
 
-      // 👉 simpan ke zustand + storage
-      setAuth(token, user, rememberMe);
+      // 👉 simpan ke zustand + storage (tanpa rememberMe parameter)
+      // rememberMe mungkin sudah ditangani di dalam implementasi setAuth
+      setAuth(token, user);
 
       // redirect
       window.location.href = "/home";
@@ -108,11 +109,14 @@ export default function LoginForm() {
       <div className="mb-4 flex items-center">
         <input
           type="checkbox"
+          id="rememberMe"
           checked={rememberMe}
           onChange={(e) => setRememberMe(e.target.checked)}
           className="mr-2"
         />
-        <span className="text-sm">Ingat saya</span>
+        <label htmlFor="rememberMe" className="text-sm">
+          Ingat saya
+        </label>
       </div>
 
       {/* Submit */}
