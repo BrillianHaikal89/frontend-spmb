@@ -47,10 +47,12 @@ export default function LoginForm() {
 
       const { token, user } = result.data;
 
-      // 👉 simpan ke zustand + storage (tanpa rememberMe parameter)
-      // rememberMe mungkin sudah ditangani di dalam implementasi setAuth
+      // 👉 simpan ke zustand + storage (hanya 2 parameter)
       setAuth(token, user);
 
+      // Catatan: rememberMe mungkin perlu ditangani secara terpisah
+      // di dalam implementasi useAuthStore atau storage handler
+      
       // redirect
       window.location.href = "/home";
     } catch (err: any) {
