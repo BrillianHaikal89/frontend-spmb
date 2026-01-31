@@ -29,8 +29,7 @@ export default function DraftJuknisPage() {
   return (
     <div className="min-h-screen bg-yellow-50 p-6">
       <div className="mb-8">
-        <div className="rounded-lg bg-gradient-to-r from-yellow-100 to-yellow-50 p-6 shadow-sm relative">
-          {/* Konten Header */}
+        <div className="relative rounded-lg bg-gradient-to-r from-yellow-100 to-yellow-50 p-6 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="rounded-lg bg-yellow-500 p-3">
               <FileEdit className="h-8 w-8 text-white" />
@@ -44,13 +43,12 @@ export default function DraftJuknisPage() {
               </p>
             </div>
           </div>
-          
-          {/* Tombol Tambah Draft Juknis - hanya untuk non-admin */}
+
           {!isAdmin && (
-            <div className="absolute top-6 right-6">
+            <div className="absolute right-6 top-6">
               <button
                 onClick={() => setOpenModal(true)}
-                className="flex items-center gap-2 rounded-lg bg-yellow-600 px-5 py-2.5 text-white hover:bg-yellow-700 transition-colors duration-200 shadow-sm"
+                className="flex items-center gap-2 rounded-lg bg-yellow-600 px-5 py-2.5 text-white hover:bg-yellow-700 transition-colors shadow-sm"
               >
                 <Plus size={18} />
                 Tambah Draft Juknis
@@ -61,13 +59,9 @@ export default function DraftJuknisPage() {
       </div>
 
       <div className="rounded-xl bg-white p-4 shadow-sm">
-        <DraftJuknisTable 
-          reload={reload} 
-          isAdmin={isAdmin}
-        />
+        <DraftJuknisTable reload={reload} isAdmin={isAdmin} />
       </div>
 
-      {/* Modal untuk menambah Draft Juknis */}
       {openModal && !isAdmin && (
         <DraftJuknisModal
           onClose={() => setOpenModal(false)}
