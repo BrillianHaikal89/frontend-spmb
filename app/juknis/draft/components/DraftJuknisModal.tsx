@@ -16,7 +16,13 @@ function formatWilayah(username?: string) {
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
-const ALL_JENJANG = ["SD", "SMP", "SMA"];
+
+// Jenjang berdasarkan role
+const JENJANG_BY_ROLE = {
+  provinsi: ["SD", "SMP", "SMA"],
+  kabupaten: ["SD", "SMP"],
+  kota: ["SD", "SMP"],
+};
 
 /* ================= COMPONENT ================= */
 export default function JuknisModal({
@@ -30,10 +36,21 @@ export default function JuknisModal({
   const token = useAuthStore((s) => s.token);
 
   const wilayah = formatWilayah(user?.username);
+  const userRole = user?.role?.toLowerCase() || "";
+
+  // Dapatkan jenjang yang diizinkan berdasarkan role
+  const getJenjangByRole = () => {
+    if (userRole.includes("provinsi")) return JENJANG_BY_ROLE.provinsi;
+    if (userRole.includes("kabupaten")) return JENJANG_BY_ROLE.kabupaten;
+    if (userRole.includes("kota")) return JENJANG_BY_ROLE.kota;
+    return [];
+  };
+
+  const allowedJenjang = getJenjangByRole();
 
   const [loading, setLoading] = useState(false);
   const [usedJenjang, setUsedJenjang] = useState<string[]>([]);
-  const [availableJenjang, setAvailableJenjang] = useState<string[]>(ALL_JENJANG);
+  const [availableJenjang, setAvailableJenjang] = useState<string[]>(allowedJenjang);
 
   const [form, setForm] = useState({
     jenjang: "",
@@ -69,7 +86,8 @@ export default function JuknisModal({
 
         setUsedJenjang(json.data);
 
-        const filtered = ALL_JENJANG.filter(
+        // Filter jenjang yang tersedia berdasarkan role dan jenjang yang sudah digunakan
+        const filtered = allowedJenjang.filter(
           (j) => !json.data.includes(j)
         );
 
@@ -85,7 +103,7 @@ export default function JuknisModal({
     };
 
     fetchUsedJenjang();
-  }, [token]);
+  }, [token, allowedJenjang]); // Tambahkan allowedJenjang ke dependencies
 
   const total =
     Number(form.persen_domisili) +
@@ -131,6 +149,12 @@ export default function JuknisModal({
 
     if (!token) {
       alert("Sesi login berakhir, silakan login ulang");
+      return;
+    }
+
+    // Validasi tambahan untuk role dan jenjang
+    if (!allowedJenjang.includes(form.jenjang)) {
+      alert("Jenjang ini tidak diizinkan untuk role Anda");
       return;
     }
 
@@ -188,26 +212,86 @@ export default function JuknisModal({
           onSubmit={handleSubmit}
           className="grid grid-cols-1 gap-4 bg-blue-50 p-6 md:grid-cols-2 lg:grid-cols-4"
         >
-          <Input label="Wilayah" value={wilayah} disabled />
-
           <Select
             label="Jenjang"
             name="jenjang"
-            value={form.jenjang}
+            value={form.jenjang || ""} // Pastikan selalu string
             onChange={handleChange}
             options={availableJenjang}
+            disabled={availableJenjang.length === 0}
           />
 
-          <Input label="Pejabat Penandatangan" name="pejabat_penandatangan" value={form.pejabat_penandatangan} onChange={handleChange} />
-          <Input type="date" label="Tgl Penetapan Juknis" name="tgl_penetapan_juknis" value={form.tgl_penetapan_juknis} onChange={handleChange} />
-          <Input type="date" label="Tgl Mulai Pendaftaran" name="tgl_mulai_pendaftaran" value={form.tgl_mulai_pendaftaran} onChange={handleChange} />
-          <Input type="date" label="Tgl Penetapan Kelulusan" name="tgl_penetapan_kelulusan" value={form.tgl_penetapan_kelulusan} onChange={handleChange} />
-          <Input type="date" label="Tgl Daftar Ulang" name="tgl_daftar_ulang" value={form.tgl_daftar_ulang} onChange={handleChange} />
+          {availableJenjang.length === 0 && (
+            <div className="lg:col-span-4">
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                Semua jenjang untuk wilayah Anda sudah terisi. Tidak ada jenjang tersedia untuk ditambahkan.
+              </p>
+            </div>
+          )}
 
-          <Input type="number" label="% Domisili" name="persen_domisili" value={form.persen_domisili} onChange={handleChange} />
-          <Input type="number" label="% Afirmasi" name="persen_afirmasi" value={form.persen_afirmasi} onChange={handleChange} />
-          <Input type="number" label="% Prestasi" name="persen_prestasi" value={form.persen_prestasi} onChange={handleChange} />
-          <Input type="number" label="% Mutasi" name="persen_mutasi" value={form.persen_mutasi} onChange={handleChange} />
+          <Input 
+            label="Pejabat Penandatangan" 
+            name="pejabat_penandatangan" 
+            value={form.pejabat_penandatangan || ""} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="date" 
+            label="Tgl Penetapan Juknis" 
+            name="tgl_penetapan_juknis" 
+            value={form.tgl_penetapan_juknis || ""} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="date" 
+            label="Tgl Mulai Pendaftaran" 
+            name="tgl_mulai_pendaftaran" 
+            value={form.tgl_mulai_pendaftaran || ""} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="date" 
+            label="Tgl Penetapan Kelulusan" 
+            name="tgl_penetapan_kelulusan" 
+            value={form.tgl_penetapan_kelulusan || ""} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="date" 
+            label="Tgl Daftar Ulang" 
+            name="tgl_daftar_ulang" 
+            value={form.tgl_daftar_ulang || ""} 
+            onChange={handleChange} 
+          />
+
+          <Input 
+            type="number" 
+            label="% Domisili" 
+            name="persen_domisili" 
+            value={form.persen_domisili || 0} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="number" 
+            label="% Afirmasi" 
+            name="persen_afirmasi" 
+            value={form.persen_afirmasi || 0} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="number" 
+            label="% Prestasi" 
+            name="persen_prestasi" 
+            value={form.persen_prestasi || 0} 
+            onChange={handleChange} 
+          />
+          <Input 
+            type="number" 
+            label="% Mutasi" 
+            name="persen_mutasi" 
+            value={form.persen_mutasi || 0} 
+            onChange={handleChange} 
+          />
 
           {/* TOTAL */}
           <div className="lg:col-span-4">
@@ -230,7 +314,7 @@ export default function JuknisModal({
             </label>
             <textarea
               name="data_dukung_lainnya"
-              value={form.data_dukung_lainnya}
+              value={form.data_dukung_lainnya || ""}
               onChange={handleChange}
               rows={3}
               className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
@@ -243,7 +327,9 @@ export default function JuknisModal({
               className="rounded-lg border border-blue-300 bg-white px-5 py-2 text-gray-800 hover:bg-blue-100">
               Batal
             </button>
-            <button type="submit" disabled={loading || total !== 100}
+            <button 
+              type="submit" 
+              disabled={loading || total !== 100 || availableJenjang.length === 0 || !form.jenjang}
               className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
               {loading ? "Menyimpan..." : "Simpan"}
             </button>
@@ -255,25 +341,37 @@ export default function JuknisModal({
 }
 
 /* ================= INPUT & SELECT ================= */
-function Input({ label, ...props }: any) {
+function Input({ label, type = "text", value, ...props }: any) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-900">
         {label}
       </label>
-      <input
-        {...props}
-        min={0}
-        max={100}
-        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
-        focus:outline-none focus:ring-2 focus:ring-blue-300
-        disabled:bg-blue-100 disabled:cursor-not-allowed"
-      />
+      {type === "file" ? (
+        <input
+          type="file"
+          {...props}
+          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
+          focus:outline-none focus:ring-2 focus:ring-blue-300
+          disabled:bg-blue-100 disabled:cursor-not-allowed"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          {...props}
+          min={type === "number" ? 0 : undefined}
+          max={type === "number" ? 100 : undefined}
+          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
+          focus:outline-none focus:ring-2 focus:ring-blue-300
+          disabled:bg-blue-100 disabled:cursor-not-allowed"
+        />
+      )}
     </div>
   );
 }
 
-function Select({ label, options, ...props }: any) {
+function Select({ label, options, disabled, value = "", ...props }: any) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-900">
@@ -281,8 +379,10 @@ function Select({ label, options, ...props }: any) {
       </label>
       <select
         {...props}
+        value={value}
+        disabled={disabled}
         className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-gray-900
-        focus:outline-none focus:ring-2 focus:ring-blue-300"
+        focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-blue-100 disabled:cursor-not-allowed"
       >
         <option value="">Pilih</option>
         {options.map((o: string) => (

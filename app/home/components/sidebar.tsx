@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  CheckCircle, // ✅ icon validasi
+  ChevronDown,
+  CheckCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -21,49 +22,22 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [openJuknis, setOpenJuknis] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
-
   const { clearAuth, user } = useAuthStore();
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+
+    // auto open dropdown jika berada di halaman juknis
+    if (pathname?.startsWith("/juknis")) {
+      setOpenJuknis(true);
+    }
+  }, [pathname]);
 
   const isAdmin = user?.role === "admin";
-
-  /* ================= MENU ================= */
-  const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: Home, path: "/home" },
-    { id: "penetapan-wilayah", label: "Penetapan Wilayah", icon: MapPin, path: "/wilayah" },
-    { id: "daya-tampung", label: "Daya Tampung (Swasta)", icon: Users, path: "/daya-tampung" },
-
-    // ===== PENETAPAN JUKNIS =====
-    { id: "penetapan-juknis", label: "Penetapan Juknis", icon: FileText, path: "/juknis" },
-
-    // ✅ KHUSUS ADMIN
-    ...(isAdmin
-      ? [
-          {
-            id: "validasi-juknis",
-            label: "Validasi Juknis",
-            icon: CheckCircle,
-            path: "/validasi",
-          },
-        ]
-      : []),
-
-    { id: "sk", label: "SK", icon: BookOpen, path: "/sk" },
-    { id: "logout", label: "Logout", icon: LogOut, path: "#" },
-  ];
-
-  const getActiveMenu = () => {
-    const currentItem = menuItems.find((item) =>
-      pathname?.startsWith(item.path)
-    );
-    return currentItem?.id || "dashboard";
-  };
 
   const handleConfirmLogout = () => {
     clearAuth();
@@ -99,9 +73,7 @@ export default function Sidebar() {
                     className="object-contain"
                   />
                 </div>
-                <span className="text-lg font-bold text-gray-900">
-                  SPMB
-                </span>
+                <span className="text-lg font-bold text-gray-900">SPMB</span>
               </Link>
             ) : (
               <Link href="/home" className="relative h-8 w-8 mx-auto">
@@ -130,39 +102,108 @@ export default function Sidebar() {
         {/* MENU */}
         <nav className="p-2">
           <ul className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = getActiveMenu() === item.id;
+            {/* DASHBOARD */}
+            <SidebarLink
+              href="/home"
+              icon={Home}
+              label="Dashboard"
+              active={pathname === "/home"}
+              collapsed={isCollapsed}
+            />
 
-              return (
-                <li key={item.id}>
-                  <Link
-                    href={item.path}
-                    onClick={(e) => {
-                      if (item.id === "logout") {
-                        e.preventDefault();
-                        setShowLogoutModal(true);
-                      }
-                    }}
-                    className={`
-                      flex items-center rounded-lg px-3 py-2.5 text-sm font-medium
-                      ${
-                        item.id === "logout"
-                          ? "text-red-600 hover:bg-red-50"
-                          : isActive
-                          ? "bg-blue-100 text-blue-700"
-                          : "text-gray-700 hover:bg-blue-50"
-                      }
-                      ${isCollapsed ? "justify-center" : ""}
-                      transition-colors
-                    `}
-                  >
-                    <Icon className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
-                    {!isCollapsed && <span>{item.label}</span>}
-                  </Link>
-                </li>
-              );
-            })}
+            <SidebarLink
+              href="/wilayah"
+              icon={MapPin}
+              label="Penetapan Wilayah"
+              active={pathname.startsWith("/wilayah")}
+              collapsed={isCollapsed}
+            />
+
+            <SidebarLink
+              href="/tampung"
+              icon={Users}
+              label="Daya Tampung (Swasta)"
+              active={pathname.startsWith("/daya-tampung")}
+              collapsed={isCollapsed}
+            />
+
+            {/* ================= PENETAPAN JUKNIS (DROPDOWN) ================= */}
+            <li>
+              <button
+                onClick={() => !isCollapsed && setOpenJuknis(!openJuknis)}
+                className={`
+                  flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium
+                  ${
+                    pathname.startsWith("/juknis")
+                      ? "bg-blue-100 text-blue-700"
+                      : "text-gray-700 hover:bg-blue-50"
+                  }
+                  ${isCollapsed ? "justify-center" : ""}
+                `}
+              >
+                <FileText className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-left">Penetapan Juknis</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${
+                        openJuknis ? "rotate-180" : ""
+                      }`}
+                    />
+                  </>
+                )}
+              </button>
+
+              {/* DROPDOWN */}
+              {!isCollapsed && openJuknis && (
+                <ul className="ml-10 mt-1 space-y-1">
+                  <SubMenu
+                    href="/juknis/draft"
+                    label="Draft"
+                    active={pathname === "/juknis/draft"}
+                  />
+                  <SubMenu
+                    href="/juknis/final"
+                    label="Final"
+                    active={pathname === "/juknis/final"}
+                  />
+                </ul>
+              )}
+            </li>
+
+            {/* VALIDASI JUKNIS - ADMIN */}
+            {isAdmin && (
+              <SidebarLink
+                href="/validasi"
+                icon={CheckCircle}
+                label="Validasi Juknis"
+                active={pathname.startsWith("/validasi")}
+                collapsed={isCollapsed}
+              />
+            )}
+
+            <SidebarLink
+              href="/sk"
+              icon={BookOpen}
+              label="SK"
+              active={pathname.startsWith("/sk")}
+              collapsed={isCollapsed}
+            />
+
+            {/* LOGOUT */}
+            <li>
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                className={`
+                  flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium
+                  text-red-600 hover:bg-red-50
+                  ${isCollapsed ? "justify-center" : ""}
+                `}
+              >
+                <LogOut className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
+                {!isCollapsed && <span>Logout</span>}
+              </button>
+            </li>
           </ul>
         </nav>
       </aside>
@@ -181,13 +222,13 @@ export default function Sidebar() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                className="rounded-lg border px-4 py-2 text-sm"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmLogout}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white"
               >
                 Logout
               </button>
@@ -196,5 +237,41 @@ export default function Sidebar() {
         </div>
       )}
     </>
+  );
+}
+
+/* ================= COMPONENT ================= */
+
+function SidebarLink({ href, icon: Icon, label, active, collapsed }: any) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className={`
+          flex items-center rounded-lg px-3 py-2.5 text-sm font-medium
+          ${active ? "bg-blue-100 text-blue-700" : "text-gray-700 hover:bg-blue-50"}
+          ${collapsed ? "justify-center" : ""}
+        `}
+      >
+        <Icon className={`h-5 w-5 ${!collapsed ? "mr-3" : ""}`} />
+        {!collapsed && <span>{label}</span>}
+      </Link>
+    </li>
+  );
+}
+
+function SubMenu({ href, label, active }: any) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className={`
+          block rounded-lg px-3 py-2 text-sm
+          ${active ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-blue-50"}
+        `}
+      >
+        {label}
+      </Link>
+    </li>
   );
 }

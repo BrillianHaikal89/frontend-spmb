@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/app/store/useAuthStore'
-import JuknisDetailModal from './JuknisDetailModal'
-import JuknisEditModal from './JuknisEditModal'
+import JuknisDetailModal from './FinalJuknisDetailModal'
+import JuknisEditModal from './FinalJuknisEditModal'
 
 export default function JuknisTable ({ reload }: { reload: boolean }) {
   const token = useAuthStore(s => s.token)
