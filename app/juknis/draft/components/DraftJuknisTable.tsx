@@ -5,11 +5,21 @@ import { useAuthStore } from '@/app/store/useAuthStore'
 import JuknisDetailModal from './DraftJuknisDetailModal'
 import JuknisEditModal from './DraftJuknisEditModal'
 
-export default function JuknisTable ({ reload }: { reload: boolean }) {
+/* ✅ PERBAIKAN UTAMA: props ditambahkan */
+type DraftJuknisTableProps = {
+  reload: boolean
+  isAdmin?: boolean
+}
+
+export default function DraftJuknisTable({
+  reload,
+  isAdmin: isAdminFromProps
+}: DraftJuknisTableProps) {
   const token = useAuthStore(s => s.token)
   const user = useAuthStore(s => s.user)
 
-  const isAdmin = user?.role === 'admin'
+  /* ✅ fallback: kalau props tidak dikirim, pakai dari store */
+  const isAdmin = isAdminFromProps ?? user?.role === 'admin'
 
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,9 +112,9 @@ export default function JuknisTable ({ reload }: { reload: boolean }) {
                   </span>
                 </td>
 
-                {/* ✅ KETERANGAN – SAMA DENGAN DETAIL MODAL */}
+                {/* KETERANGAN */}
                 <td className='p-3 text-gray-700 max-w-md break-words'>
-                  {item.keterangan && item.keterangan.trim() !== ''
+                  {item.keterangan?.trim()
                     ? item.keterangan
                     : 'Tidak ada keterangan'}
                 </td>
